@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import yaml
+import subprocess
+import re
+import pathlib
+from datetime import datetime 
+
+if __name__ == '__main__':
+    root = pathlib.Path(__file__)
+    fullpath = root.resolve()
+    directory_path = fullpath.parent
+
+    configfile = open(str(directory_path) + '/config.yaml', 'r')
+    yamlconf = yaml.load(configfile)
+    pattern_list = list()
+    if yamlconf is not None:
+        pattern_list = yamlconf.get('stats')
+
+    if pattern_list:
+        pattern = re.compile('|'.join(pattern_list))
+    else: 
+        pattern = re.compile('.')
+
+    unbound_control = '/usr/sbin/unbound-control'
+    metrics_prefix  = 'unbound'
+    
+    if yamlconf.get('unbound_control'):
+        unbound_control = yamlconf.get('unbound_control')
+
+    if yamlconf.get('mtrics_prefix'):
+        metrics_prefix = yamlconf.get('mtrics_prefix')
+    
+    epoch = str( int( datetime.now().timestamp() ) )
+    stats = subprocess.check_output([unbound_control, "stats"])
+    
+    for line in stats.decode("utf-8").split('\n'):
+        if re.search(pattern, line):
+            line = line.replace('=', '\t')
+            print(metrics_prefix + '.' + line + '\t' + epoch)
+    
