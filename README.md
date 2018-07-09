@@ -5,6 +5,14 @@ mackerel-plugin-unbound
 
 Get unbound stats (unbound-control stats) metrics for Mackerel
 
+## install
+
+git clone or mkr plugin install
+
+```
+$ sudo mkr plugin install hogem/mackerel-plugin-unbound
+```
+
 ## Usage
 
 config.yaml
@@ -19,7 +27,7 @@ stats:
 ```
 
 ```
-$ sudo ./mackerel-plugin-unbound
+$ sudo ./mackerel-plugin-unbound --config config.yaml
 unbound.total.num.queries       762108  1531125546
 unbound.total.num.cachehits     687451  1531125546
 unbound.total.num.cachemiss     74657   1531125546
