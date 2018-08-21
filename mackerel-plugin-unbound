@@ -102,7 +102,8 @@ if __name__ == '__main__':
         for key in data:
             if re.search(metrics_prefix, key):
                 value = int(data[key]) - int(loaded[key])
-                print(key, value, timestamp, sep='\t')
+                if value >= 0:
+                    print(key, value, timestamp, sep='\t')
 
     save_statsfile(statsfile, data)
 
