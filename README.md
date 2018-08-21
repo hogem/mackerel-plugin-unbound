@@ -5,7 +5,7 @@ mackerel-plugin-unbound
 
 Get unbound stats (unbound-control stats) metrics for Mackerel
 
-## install
+## Install
 
 git clone or mkr plugin install
 

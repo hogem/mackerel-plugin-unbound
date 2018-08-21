@@ -1,34 +1,39 @@
 #!/usr/bin/env python3
 
 import yaml
+import json
 import subprocess
 import re
 import pathlib
+import os
 from datetime import datetime 
 import argparse
+import logging
+
 
 def getargs():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=False, action='store', help='config.yaml')
+    parser.add_argument('--no-state', required=False, action='store_true', 
+        help='Not use state file and read whole logs')
+    parser.add_argument('--state-dir', required=False, action='store', 
+        help='Dir to keep state files under (default: /tmp)', default='/tmp')
 
     args = parser.parse_args()
     return args
 
 
-if __name__ == '__main__':
-    root = pathlib.Path(__file__)
-    fullpath = root.resolve()
-    directory_path = fullpath.parent
-
-    args = getargs()
-
-    configfile = str(directory_path) + '/config.yaml'
-    if args.config:
-        configfile = args.config
+def load_yaml(directory_path, args_config):
+    configfile = os.path.join(directory_path, 'config.yaml')
+    if args_config:
+        configfile = args_config
 
     yamlfile = open(configfile, 'r')
 
-    yamlconf = yaml.load(yamlfile)
+    return yaml.load(yamlfile)
+
+
+def get_regex_pattern(yamlconf):
     pattern_list = list()
     if yamlconf is not None:
         pattern_list = yamlconf.get('stats')
@@ -38,22 +43,66 @@ if __name__ == '__main__':
     else: 
         pattern = re.compile('.')
 
-    unbound_control = '/usr/sbin/unbound-control'
-    metrics_prefix  = 'unbound'
-    
-    if yamlconf.get('unbound_control'):
-        unbound_control = yamlconf.get('unbound_control')
+    return pattern
 
-    if yamlconf.get('mtrics_prefix'):
-        metrics_prefix = yamlconf.get('mtrics_prefix')
+
+def load_statsfile(statsfile):
+    if not os.path.exists(statsfile):
+        return None
+    else:
+        with open(statsfile, 'r') as f:
+            stats = json.load(f)
+            return stats
+
+
+def save_statsfile(statsfile, data):
+    with open(statsfile, 'w') as f:
+        timestamp = int( datetime.now().timestamp() )
+        f.write(
+            json.dumps(data, indent=4)
+        )
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+
+    root = pathlib.Path(__file__)
+    fullpath = root.resolve()
+    directory_path = fullpath.parent
+
+    args = getargs()
+    statsfile = os.path.join(args.state_dir, fullpath.name)
+
+    yamlconf = load_yaml(directory_path, args.config)
+    pattern = get_regex_pattern(yamlconf)
+
+    unbound_control = yamlconf.get('unbound_control', '/usr/sbin/unbound-control')
+    metrics_prefix  = yamlconf.get('mtrics_prefix', 'unbound')
     
-    epoch = str( int( datetime.now().timestamp() ) )
+    timestamp = int( datetime.now().timestamp() )
     stats = subprocess.check_output([unbound_control, "stats"])
-
-
     
+    data = {'timestamp': timestamp}
     for line in stats.decode("utf-8").split('\n'):
         if re.search(pattern, line):
-            line = line.replace('=', '\t')
-            print(metrics_prefix + '.' + line + '\t' + epoch)
+            key, value = line.split('=')
+            metrics_key = metrics_prefix + '.' + key
+            data[metrics_key] = value
+            if args.no_state:
+                print(key, value, timestamp, sep='\t')
+    else:
+        if args.no_state:
+            exit()
     
+
+    loaded = load_statsfile(statsfile)
+    if loaded is None:
+        logging.info('does not exist at last fetch')
+    else:
+        for key in data:
+            if re.search(metrics_prefix, key):
+                value = int(data[key]) - int(loaded[key])
+                print(key, value, timestamp, sep='\t')
+
+    save_statsfile(statsfile, data)
+
