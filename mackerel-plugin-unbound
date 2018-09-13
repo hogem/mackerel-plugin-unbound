@@ -6,7 +6,7 @@ import subprocess
 import re
 import pathlib
 import os
-from datetime import datetime 
+from datetime import datetime
 import argparse
 import logging
 
@@ -14,9 +14,9 @@ import logging
 def getargs():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', required=False, action='store', help='config.yaml')
-    parser.add_argument('--no-state', required=False, action='store_true', 
+    parser.add_argument('--no-state', required=False, action='store_true',
         help='Not use state file and read whole logs')
-    parser.add_argument('--state-dir', required=False, action='store', 
+    parser.add_argument('--state-dir', required=False, action='store',
         help='Dir to keep state files under (default: /tmp)', default='/tmp')
 
     args = parser.parse_args()
@@ -40,7 +40,7 @@ def get_regex_pattern(yamlconf):
 
     if pattern_list:
         pattern = re.compile('|'.join(pattern_list))
-    else: 
+    else:
         pattern = re.compile('.')
 
     return pattern
@@ -77,23 +77,26 @@ if __name__ == '__main__':
     pattern = get_regex_pattern(yamlconf)
 
     unbound_control = yamlconf.get('unbound_control', '/usr/sbin/unbound-control')
-    metrics_prefix  = yamlconf.get('mtrics_prefix', 'unbound')
-    
+    metrics_prefix  = yamlconf.get('metrics_prefix', 'unbound')
+    metrics_suffix  = yamlconf.get('metrics_suffix', None)
+
     timestamp = int( datetime.now().timestamp() )
     stats = subprocess.check_output([unbound_control, "stats"])
-    
+
     data = {'timestamp': timestamp}
     for line in stats.decode("utf-8").split('\n'):
         if re.search(pattern, line):
             key, value = line.split('=')
             metrics_key = metrics_prefix + '.' + key
+            if metrics_suffix is not None:
+                metrics_key = metrics_key + '.' + metrics_suffix
             data[metrics_key] = value
             if args.no_state:
-                print(key, value, timestamp, sep='\t')
+                print(metrics_key, value, timestamp, sep='\t')
     else:
         if args.no_state:
             exit()
-    
+
 
     loaded = load_statsfile(statsfile)
     if loaded is None:
