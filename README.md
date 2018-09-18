@@ -43,5 +43,5 @@ command = "/path/to/mackerel-plugin-unbound"
 
 ## Requirements
 
-- Python 3
+- Python 2.6+
 - pyyaml

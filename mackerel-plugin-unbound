@@ -1,12 +1,13 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python
 
+from __future__ import print_function
 import yaml
 import json
 import subprocess
 import re
 import pathlib
 import os
-from datetime import datetime
+import time
 import argparse
 import logging
 
@@ -24,7 +25,7 @@ def getargs():
 
 
 def load_yaml(directory_path, args_config):
-    configfile = os.path.join(directory_path, 'config.yaml')
+    configfile = os.path.join(str(directory_path), 'config.yaml')
     if args_config:
         configfile = args_config
 
@@ -57,7 +58,7 @@ def load_statsfile(statsfile):
 
 def save_statsfile(statsfile, data):
     with open(statsfile, 'w') as f:
-        timestamp = int( datetime.now().timestamp() )
+        timestamp = int( time.time() )
         f.write(
             json.dumps(data, indent=4)
         )
@@ -81,8 +82,9 @@ if __name__ == '__main__':
     metrics_key_suffix = yamlconf.get('metrics_key_suffix', None)
     metrics_key_remove = yamlconf.get('metrics_key_remove')
 
-    timestamp = int( datetime.now().timestamp() )
-    stats = subprocess.check_output([unbound_control, "stats"])
+    timestamp = int( time.time() )
+    #stats = subprocess.check_output([unbound_control, "stats"])
+    stats = subprocess.Popen([unbound_control, "stats"], stdout=subprocess.PIPE).communicate()[0]
 
     data = {'timestamp': timestamp}
     for line in stats.decode("utf-8").split('\n'):
