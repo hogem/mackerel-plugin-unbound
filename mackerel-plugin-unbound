@@ -77,8 +77,9 @@ if __name__ == '__main__':
     pattern = get_regex_pattern(yamlconf)
 
     unbound_control = yamlconf.get('unbound_control', '/usr/sbin/unbound-control')
-    metrics_prefix  = yamlconf.get('metrics_prefix', 'unbound')
-    metrics_suffix  = yamlconf.get('metrics_suffix', None)
+    metrics_key_prefix = yamlconf.get('metrics_key_prefix', 'unbound')
+    metrics_key_suffix = yamlconf.get('metrics_key_suffix', None)
+    metrics_key_remove = yamlconf.get('metrics_key_remove')
 
     timestamp = int( datetime.now().timestamp() )
     stats = subprocess.check_output([unbound_control, "stats"])
@@ -87,9 +88,13 @@ if __name__ == '__main__':
     for line in stats.decode("utf-8").split('\n'):
         if re.search(pattern, line):
             key, value = line.split('=')
-            metrics_key = metrics_prefix + '.' + key
-            if metrics_suffix is not None:
-                metrics_key = metrics_key + '.' + metrics_suffix
+            metrics_key = metrics_key_prefix + '.' + key
+
+            if metrics_key_suffix is not None:
+                metrics_key = metrics_key + '.' + metrics_key_suffix
+            if metrics_key_remove:
+                metrics_key = metrics_key.replace(metrics_key_remove, '')
+
             data[metrics_key] = value
             if args.no_state:
                 print(metrics_key, value, timestamp, sep='\t')
@@ -103,10 +108,11 @@ if __name__ == '__main__':
         logging.info('does not exist at last fetch')
     else:
         for key in data:
-            if re.search(metrics_prefix, key):
+            if re.search(metrics_key_prefix, key):
+                if not loaded.get(key):
+                    continue
                 value = int(data[key]) - int(loaded[key])
-                if value >= 0:
-                    print(key, value, timestamp, sep='\t')
+                print(key, value, timestamp, sep='\t')
 
     save_statsfile(statsfile, data)
 

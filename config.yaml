@@ -1,6 +1,7 @@
 ---
 unbound_control: /usr/sbin/unbound-control
-metrics_prefix: unbound
-# metrics_suffix: hostA
+# metrics_key_prefix: ''
+# metrics_key_suffix: ''
+# metrics_key_remove: ''
 stats:
   - ^total.num
